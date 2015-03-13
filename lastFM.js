@@ -14,18 +14,6 @@ var get = {
 
 }
 
-/*
-	Album Art
-
-	Usage:
-
-		lastFM
-
-			.getAlbumArt('The Vines','Highly Evolved')
-
-			.then(console.log) //=> http://url.com/highlyEvolved.jpg
-*/
-
 var lastFM = {
 
 	_albumArt: R.pipe(
