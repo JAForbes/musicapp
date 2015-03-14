@@ -2,7 +2,7 @@
   "name": "musicapp",
   "version": "1.0.0",
   "description": "Simple album picker",
-  "main": "app.js",
+  "main": "lastFM.js",
   "dependencies": {
     "ramda": "^0.11.0",
     "request": "^2.53.0"
