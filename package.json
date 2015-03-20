@@ -4,8 +4,11 @@
   "description": "Simple album picker",
   "main": "lastFM.js",
   "dependencies": {
+    "bluebird": "^2.9.14",
+    "id3js": "^1.1.3",
     "ramda": "^0.11.0",
-    "request": "^2.53.0"
+    "request": "^2.53.0",
+    "voyager": "git://github.com/JAForbes/voyager"
   },
   "devDependencies": {},
   "scripts": {
