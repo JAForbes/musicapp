@@ -27,10 +27,7 @@ var addTrack = function(album,file_name,ext,id3){
 var addAlbumArt = function(album){
 	var track = sample(album.tracks)
 
-	var artist = track.id3.artist;
-	var album = track.id3.album;
-
-	return albumArt(artist, album)
+	return albumArt(track.id3.artist, track.id3.album)
 		.then( function(url){
 			return album.art = url
 		})
@@ -41,7 +38,7 @@ addAlbumArts = function(albums){
 
 	return Promise.settle(
 		_.map(albums,addAlbumArt)
-	)
+	).then(R.always(albums))
 }
 
 var buildAlbums = function(file_types, tree){
@@ -84,6 +81,7 @@ scan = function(file_types,scan_directory){
 
 
 }
+
 
 if(require.main == module){
 	var default_path = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'] + '\\' + 'Music'
