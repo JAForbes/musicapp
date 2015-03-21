@@ -1,5 +1,6 @@
-var Promise = require('bluebird')
 var R = require('ramda')
+var Promise = require('bluebird')
+
 var _ = require('lodash')
 var path = require('path')
 var id3 = require('id3js')
@@ -10,12 +11,7 @@ var voyager = require('voyager')
 var albumArt = require('./lastFM').getAlbumArt
 var traverse = require('./traverse')
 
-var sample = function(val){
-	var keys = Object.keys(val)
-	var n = keys.length;
-	var key = keys[Math.floor(n*Math.random())]
-	return val[key]
-}
+
 
 var addTrack = function(album,file_name,ext,id3){
 	return album.tracks[file_name] = {
@@ -25,7 +21,7 @@ var addTrack = function(album,file_name,ext,id3){
 }
 
 var addAlbumArt = function(album){
-	var track = sample(album.tracks)
+	var track = _.sample(album.tracks)
 
 	return albumArt(track.id3.artist, track.id3.album)
 		.then( function(url){
@@ -34,7 +30,7 @@ var addAlbumArt = function(album){
 }
 
 
-addAlbumArts = function(albums){
+var addAlbumArts = function(albums){
 
 	return Promise.settle(
 		_.map(albums,addAlbumArt)
@@ -67,7 +63,7 @@ var buildAlbums = function(file_types, tree){
 	.then(R.always(albums))
 }
 
-scan = function(file_types,scan_directory){
+var scan = function(file_types,scan_directory){
 
 	return voyager({
 	  tree: { name: scan_directory },
@@ -84,9 +80,23 @@ scan = function(file_types,scan_directory){
 
 
 if(require.main == module){
+	var program = require('commander')
+
+	program
+		.description("Fetch Album Art and Retrieve ID3 info for all the tracks in a target folder.")
+		.option("-t, --types <mp3,wav,...>", "file types of tracks.", R.split(','))
+		.option("-d --directory <directory>","The directory where your music is stored.  Defaults to <UserHome>/Music")
+		.option("-p --pretty", "Pretty print the JSON output")
+		.parse(process.argv)
+
 	var default_path = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'] + '\\' + 'Music'
-	scan(['.mp3'],default_path)
-		.then(JSON.stringify)
+	var music_folder = program.directory || default_path;
+	var track_file_types = program.types || ['.mp3']
+
+	var stringify = program.pretty ? R.partialRight(JSON.stringify,null,2) : JSON.stringify
+
+	scan(track_file_types, music_folder)
+		.then(stringify)
 		.then(console.log,console.error)
 }
 
