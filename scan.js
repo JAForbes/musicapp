@@ -11,8 +11,6 @@ var voyager = require('voyager')
 var albumArt = require('./lastFM').getAlbumArt
 var traverse = require('./traverse')
 
-
-
 var addTrack = function(album,file_name,ext,id3){
 	return album.tracks[file_name] = {
 		ext: ext,
