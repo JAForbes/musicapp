@@ -1,111 +1,94 @@
 var Promise = require('bluebird')
-var fs = require('fs')
-var readdir = Promise.promisify(fs.readdir)
 var R = require('ramda')
-var P = R.pipeP
-var voyager = require('voyager')
+var _ = require('lodash')
 var path = require('path')
-
 var id3 = require('id3js')
+var ID3_OPEN_LOCAL = id3.OPEN_LOCAL
+	id3 = Promise.promisify(id3)
 
-var scan_directories = ['C:/Users/James/Music']
-var file_types = ['.mp3']
-albumArt = require('./lastFM').getAlbumArt
+var voyager = require('voyager')
+var albumArt = require('./lastFM').getAlbumArt
+var traverse = require('./traverse')
 
-//albumArt('Stone Temple Pilots','Core').then(console.log)
+var sample = function(val){
+	var keys = Object.keys(val)
+	var n = keys.length;
+	var key = keys[Math.floor(n*Math.random())]
+	return val[key]
+}
 
-traverse = function(target,cb){
-
-	var type = function(val){
-	  return ({}).toString.call(val).slice(8,-1)
-	}
-	var stack = []
-	while( target ){
-	  cb(target)
-	  for(var key in target){
-	    var child = target[key]
-	    var Tchild = type(child)
-	    if(Tchild == 'Object'){
-	      stack.push(child)
-	    }
-	    if(Tchild == 'Array'){
-	    	for(var i = 0; i < child.length; i++){
-	    		stack.push(child[i])
-	    	}
-	    }
-
-	  }
-	  target = stack.shift()
+var addTrack = function(album,file_name,ext,id3){
+	return album.tracks[file_name] = {
+		ext: ext,
+		id3: id3
 	}
 }
 
+var addAlbumArt = function(album){
+	var track = sample(album.tracks)
 
-var scan_directory = 'C:/Users/James/Music'
+	var artist = track.id3.artist;
+	var album = track.id3.album;
 
-voyager({
+	return albumArt(artist, album)
+		.then( function(url){
+			return album.art = url
+		})
+}
 
-  // Tree data structure.  `name` property is the starting path
-  // Best to leave this alone and just change the os cwd
-  // defaults to './'
 
-  tree: { name: scan_directory },
-  relevance: 0,
-  file_relevance: 0,
-  directory_relevance: 0
+addAlbumArts = function(albums){
 
-}).then(function(tree){
+	return Promise.settle(
+		_.map(albums,addAlbumArt)
+	)
+}
+
+var buildAlbums = function(file_types, tree){
+
 	//Create a flat list of all directories that have mp3's in them
 	var albums = {}
-	var called = []
-	var promises = []
-	traverse(tree, function(level){
+
+	var addID3IfNotDirectory = function(level){
+
 		var parsed = path.parse(level.name)
 		var ext = parsed.ext
 		var isFile = file_types.some(R.eq(ext))
+
 		if(isFile){
+
 			var album = albums[parsed.dir] = albums[parsed.dir] || { tracks: {} }
 
-			var promise = new Promise(function(resolve,reject){
-				id3({ file: level.name, type: id3.OPEN_LOCAL }, function(err, id3){
-
-					err && reject(err)
-					resolve(album.tracks[parsed.name] = {
-						ext: ext,
-						id3: id3
-					})
-				})
-			})
-			promises.push(promise)
-
+			return id3({ file: level.name, type: ID3_OPEN_LOCAL })
+				.then( addTrack.bind(0,album,parsed.name,ext) )
 		}
-	})
-
-	return Promise.all(promises)
-		.then(function(){
-			return albums
-		})
-
-})
-.then(function(albums){
-
-	var promises = []
-	for(var album_path in albums){
-		var album = albums[album_path]
-		var track;
-		for(var key in album.tracks){
-			track = album.tracks[key];
-			break;
-		}
-			var promise = albumArt(track.id3.artist,track.id3.album)
-				.then((function(album,url){
-					return album.art = url
-				}).bind(null,album))
-
-		promises.push(promise)
 	}
-	return Promise.settle(promises).then(function(){
-		return JSON.stringify(albums)
-	})
-})
-.then(console.log,console.error)
 
+	return Promise.settle(
+		traverse(addID3IfNotDirectory,tree)
+	)
+	.then(R.always(albums))
+}
+
+scan = function(file_types,scan_directory){
+
+	return voyager({
+	  tree: { name: scan_directory },
+	  relevance: 0,
+	  file_relevance: 0,
+	  directory_relevance: 0
+
+	})
+	.then(buildAlbums.bind(0,file_types))
+	.then(addAlbumArts)
+
+
+}
+
+if(require.main == module){
+	scan(['.mp3'],'C:/Users/James/Music')
+		.then(JSON.stringify)
+		.then(console.log,console.error)
+}
+
+module.exports = scan
