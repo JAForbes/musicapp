@@ -2,7 +2,7 @@
   "name": "musicapp",
   "version": "1.0.0",
   "description": "Simple album picker",
-  "main": "lastFM.js",
+  "main": "app.js",
   "dependencies": {
     "bluebird": "^2.9.14",
     "id3js": "^1.1.3",
