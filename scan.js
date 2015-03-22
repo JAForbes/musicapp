@@ -65,19 +65,35 @@ var buildAlbums = function(file_types, tree){
 	Make the artist, album and track the key, and the dir the value
 */
 var invert = function(albums){
-
+	var isOnlyAlphas = function(word){
+		return (word.match(/[A-z]+/) || [])[0] == word
+	}
+	var digit = /\d+/
 	return _.map(albums, function(album,albumPath){
+		var sample = _.sample(album.tracks)
+		var artist = sample.id3.artist || albumPath.split('/').slice(-2)[0]
+		var album_title = sample.id3.album || albumPath.split('/').slice(-1)[0]
+		var year;
 		return {
-			title: _.sample(album.tracks).album,
+			title: album_title,
+			artist: artist,
 			dir: albumPath,
 			art: album.art,
 			tracks : _.map(album.tracks, function(track, trackPath){
+				// If one of the tracks have a year, reuse it
+				year = year || track.id3.v2.year || track.id3.v1.year;
+
 				return {
 					filename: trackPath + track.ext,
-					title: track.id3.title,
-					track: track.id3.v1.track,
-					year: track.id3.v1.year
+					title: track.id3.title || track.id3.v2.title || track.id3.v1.title ||
+						trackPath.split(" ").filter(isOnlyAlphas).join(" "),
+					artist: track.id3.artist || track.id3.v2.artist || track.id3.v1.artist || artist,
+					album: track.id3.album || track.id3.v2.album || track.id3.v1.album || album_title,
+					track: track.id3.v2.track || track.id3.v1.track || (trackPath.match(digit) || [])[0],
+					year: year
 				}
+
+
 			})
 		}
 	})
@@ -111,7 +127,7 @@ if(require.main == module){
 		.parse(process.argv)
 
 	var default_path = process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'] + '\\' + 'Music'
-	var music_folder = program.directory || default_path;
+	var music_folder = program.directory || default_path.replace(/\\/g,'/');
 	var track_file_types = program.types || ['.mp3']
 
 	var stringify = program.pretty ? R.partialRight(JSON.stringify,null,2) : JSON.stringify
