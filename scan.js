@@ -61,6 +61,28 @@ var buildAlbums = function(file_types, tree){
 	.then(R.always(albums))
 }
 
+/*
+	Make the artist, album and track the key, and the dir the value
+*/
+var invert = function(albums){
+
+	return _.map(albums, function(album,albumPath){
+		return {
+			title: _.sample(album.tracks).album,
+			dir: albumPath,
+			art: album.art,
+			tracks : _.map(album.tracks, function(track, trackPath){
+				return {
+					filename: trackPath + track.ext,
+					title: track.id3.title,
+					track: track.id3.v1.track,
+					year: track.id3.v1.year
+				}
+			})
+		}
+	})
+}
+
 var scan = function(file_types,scan_directory){
 
 	return voyager({
@@ -72,6 +94,7 @@ var scan = function(file_types,scan_directory){
 	})
 	.then(buildAlbums.bind(0,file_types))
 	.then(addAlbumArts)
+	.then(invert)
 
 
 }
@@ -92,7 +115,6 @@ if(require.main == module){
 	var track_file_types = program.types || ['.mp3']
 
 	var stringify = program.pretty ? R.partialRight(JSON.stringify,null,2) : JSON.stringify
-
 	scan(track_file_types, music_folder)
 		.then(stringify)
 		.then(console.log,console.error)
